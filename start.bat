@@ -78,7 +78,7 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 
 :: Leer modelo del .env
-SET OLLAMA_MODEL=llama3.2
+SET OLLAMA_MODEL=gemma2:2b
 FOR /F "tokens=2 delims==" %%A IN ('findstr /B "OLLAMA_MODEL" "%SCRIPT_DIR%.env" 2^>nul') DO SET OLLAMA_MODEL=%%A
 SET OLLAMA_MODEL=%OLLAMA_MODEL: =%
 

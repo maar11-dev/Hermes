@@ -50,7 +50,7 @@ chmod +x start.sh
 start.bat
 ```
 
-> El script crea automáticamente el entorno virtual, instala las dependencias y arranca el servidor.
+> El script crea automáticamente el entorno virtual, instala las dependencias, descarga el modelo de Ollama si falta y arranca el servidor.
 
 ### 3 — Abre el navegador
 
@@ -69,7 +69,7 @@ Edita el archivo `.env` (se crea automáticamente en el primer arranque):
 LLM_PROVIDER=ollama
 
 # ── Ollama ──────────────────────────────
-OLLAMA_MODEL=llama3.2       # o mistral, qwen2.5, phi3...
+OLLAMA_MODEL=gemma2:2b               # o tinyllama, qwen2.5, phi3...
 OLLAMA_BASE_URL=http://localhost:11434
 
 # ── Anthropic (alternativa) ─────────────
@@ -80,19 +80,20 @@ ANTHROPIC_MODEL=claude-sonnet-4-20250514
 EMBED_MODEL=all-MiniLM-L6-v2   # ~90MB, se descarga una vez
 
 # ── Parámetros RAG ──────────────────────
-CHUNK_SIZE=400     # palabras por fragmento
+CHUNK_SIZE=300     # palabras por fragmento
 CHUNK_OVERLAP=60   # solapamiento
-TOP_K=6            # fragmentos recuperados
+TOP_K=4            # fragmentos recuperados
 ```
 
 ### Modelos Ollama recomendados
 
 | Modelo         | Comando                   | VRAM   | Notas                    |
 |----------------|---------------------------|--------|--------------------------|
-| `llama3.2`     | `ollama pull llama3.2`    | ~4 GB  | Buena calidad, rápido    |
-| `mistral`      | `ollama pull mistral`     | ~4 GB  | Muy bueno en español     |
-| `qwen2.5`      | `ollama pull qwen2.5`     | ~4 GB  | Excelente multilingüe    |
-| `phi3`         | `ollama pull phi3`        | ~2 GB  | Para equipos con poca RAM |
+| `gemma2:2b`    | `ollama pull gemma2:2b`   | ~0.5 GB| Muy ligero en CPU/VRAM   |
+| `tinyllama`    | `ollama pull tinyllama`   | <1 GB  | Mínimo CPU, recomendado |
+| `phi3`         | `ollama pull phi3`        | ~2 GB  | Balance CPU/calidad      |
+| `qwen2.5`      | `ollama pull qwen2.5`     | ~2-3 GB| Muy bueno en español     |
+| `llama3.2`     | `ollama pull llama3.2`    | ~4 GB  | Mejor calidad, más CPU   |
 
 ---
 
