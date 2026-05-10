@@ -1,30 +1,31 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hermes</title>
-<link rel="icon" type="image/png" href="/static/hermes.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hermes - Agente RAG Local</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
 
-<link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+  <div id="app">
 
-<div id="app">
-
-  <!-- ── SIDEBAR ─────────────────────────────────────── -->
+  <!-- SIDEBAR -->
   <aside id="sidebar">
     <div class="sidebar-header">
       <div class="logo">
-        <img class="logo-icon" src="/static/hermes.png" alt="Logo Hermes">
+        <img src="hermes.png" alt="Hermes" class="logo-icon">
         <div class="logo-name">Hermes</div>
       </div>
-      <div class="logo-sub">RAG · Agente de Apuntes</div>
+      <div class="logo-sub">Agente RAG · Local</div>
     </div>
 
-    <!-- Upload -->
     <label class="upload-zone" id="upload-zone">
       <span class="upload-icon">📄</span>
       <span class="upload-text">
@@ -35,99 +36,73 @@
     </label>
 
     <div class="upload-progress" id="upload-progress">
-      <div class="progress-bar"><div class="progress-fill" style="width:70%"></div></div>
-      <div class="progress-label" id="upload-label">Procesando...</div>
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+      <div class="progress-label" id="upload-label">Indexando...</div>
     </div>
 
-    <!-- Document list -->
     <div class="section-title">Documentos</div>
     <div class="doc-list" id="doc-list">
       <div class="no-docs" id="no-docs">
         <div class="no-docs-icon">🗂️</div>
-        <p>Aún no hay documentos.<br>Sube tus apuntes en PDF para empezar.</p>
+        <p>Sin documentos aún.<br>Sube tus apuntes para empezar.</p>
       </div>
     </div>
 
     <div class="sidebar-footer">
-      <button class="select-all-btn" id="select-all-btn">Seleccionar todos</button>
+      <button class="footer-btn" id="select-all-btn">Sel. todos</button>
+      <button class="footer-btn" id="deselect-btn">Limpiar sel.</button>
     </div>
   </aside>
 
-  <!-- ── MAIN ───────────────────────────────────────── -->
+  <!-- MAIN -->
   <main id="main">
-
-    <!-- Topbar -->
     <div id="topbar">
-      <div class="topbar-left">
-        <div class="topbar-brand">
-          <img class="topbar-brand-logo" src="/static/hermes.png" alt="Hermes">
-          <span class="topbar-brand-name">Hermes</span>
-        </div>
-        <span class="chat-title">Consulta tus apuntes</span>
-        <span class="chat-subtitle" id="chat-subtitle">Selecciona documentos y escribe tu pregunta</span>
-      </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <button class="clear-btn" id="clear-btn">Limpiar chat</button>
-        <div class="mode-selector">
-          <button class="mode-btn active" data-mode="chat"      title="Pregunta y respuesta">💬 Chat</button>
-          <button class="mode-btn"        data-mode="summarize" title="Resumir documentos">📋 Resumen</button>
-          <button class="mode-btn"        data-mode="notes"     title="Generar apuntes">✍️ Apuntes</button>
-          <button class="mode-btn"        data-mode="quiz"      title="Generar test">🎯 Test</button>
+      <div class="topbar-brand">
+        <img src="hermes.png" alt="Hermes" class="topbar-brand-icon">
+        <div>
+          <div class="chat-title">Hermes</div>
+          <div class="chat-sub" id="chat-sub">Selecciona documentos y escribe tu pregunta</div>
         </div>
       </div>
+      <button class="clear-btn" id="clear-btn">Limpiar chat</button>
     </div>
 
-    <!-- Messages -->
     <div id="messages">
       <div class="welcome" id="welcome">
-        <img class="welcome-glyph" src="/static/hermes.png" alt="Hermes">
+        <img src="hermes.png" alt="Hermes" class="welcome-glyph">
         <h2>Tu biblioteca inteligente</h2>
-        <p>Sube tus apuntes en PDF, selecciónalos en la barra lateral y hazme cualquier pregunta. También puedo generar resúmenes, apuntes estructurados y tests de repaso.</p>
-        <div class="welcome-hints">
-          <button class="hint-chip" data-hint="¿Puedes explicarme los conceptos más importantes?">
-            <span class="hint-emoji">💡</span>¿Cuáles son los conceptos más importantes?
-          </button>
-          <button class="hint-chip" data-hint="Hazme un resumen completo del tema.">
-            <span class="hint-emoji">📋</span>Hazme un resumen completo del tema
-          </button>
-          <button class="hint-chip" data-hint="Genera apuntes estructurados con los puntos clave.">
-            <span class="hint-emoji">✍️</span>Genera apuntes estructurados
-          </button>
-          <button class="hint-chip" data-hint="Crea un test de 10 preguntas tipo test para repasar.">
-            <span class="hint-emoji">🎯</span>Crea un test de repaso de 10 preguntas
-          </button>
+        <p>Sube tus apuntes en PDF, selecciónalos en la barra lateral y pídeme lo que necesites: preguntas, resúmenes, apuntes, tests de repaso o cualquier otra cosa.</p>
+        <div class="hints">
+          <button class="hint" data-hint="¿Cuáles son los conceptos más importantes de estos apuntes?">💡 ¿Cuáles son los conceptos más importantes?</button>
+          <button class="hint" data-hint="Hazme un resumen completo y estructurado del tema.">📋 Hazme un resumen completo</button>
+          <button class="hint" data-hint="Genera apuntes estructurados con definiciones, esquema y puntos clave.">✍️ Genera apuntes estructurados</button>
+          <button class="hint" data-hint="Crea un test de 10 preguntas tipo test con 4 opciones para repasar.">🎯 Crea un test de repaso</button>
         </div>
       </div>
     </div>
 
-    <!-- Input -->
     <div id="input-area">
       <div class="input-wrapper">
-        <textarea id="user-input" placeholder="Pregunta sobre tus apuntes..." rows="1"></textarea>
-        <button class="send-btn" id="send-btn" title="Enviar (Enter)">➤</button>
+        <textarea id="user-input" placeholder="Pregunta, pide un resumen, un test… lo que necesites" rows="1"></textarea>
+        <button class="send-btn" id="send-btn">➤</button>
       </div>
       <div class="input-footer">
-        <span class="input-hint"><span>Enter</span> para enviar · <span>Shift+Enter</span> nueva línea</span>
-        <span class="doc-counter" id="doc-counter">0 documentos seleccionados</span>
+        <span class="input-hint"><span>Enter</span> enviar · <span>Shift+Enter</span> nueva línea</span>
+        <span class="doc-counter" id="doc-counter">0 docs seleccionados</span>
       </div>
     </div>
   </main>
 </div>
 
-<!-- Toast container -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-wrap" id="toasts"></div>
 
 <script>
-// ── Config ────────────────────────────────────────────────────────────────
-const API = '';   // vacío = misma origin (FastAPI sirve el frontend)
+const API = '';
+let docs        = [];
+let selected    = new Set();
+let streaming   = false;
 
-// ── State ─────────────────────────────────────────────────────────────────
-let documents     = [];     // [{id, filename, chunks, chars, pages}]
-let selectedDocs  = new Set();
-let currentMode   = 'chat';
-let isLoading     = false;
-
-// ── DOM refs ──────────────────────────────────────────────────────────────
+// DOM
 const docList     = document.getElementById('doc-list');
 const noDocs      = document.getElementById('no-docs');
 const uploadZone  = document.getElementById('upload-zone');
@@ -139,332 +114,237 @@ const welcome     = document.getElementById('welcome');
 const userInput   = document.getElementById('user-input');
 const sendBtn     = document.getElementById('send-btn');
 const docCounter  = document.getElementById('doc-counter');
-const chatSub     = document.getElementById('chat-subtitle');
-const selectAllBtn= document.getElementById('select-all-btn');
-const clearBtn    = document.getElementById('clear-btn');
+const chatSub     = document.getElementById('chat-sub');
 
-// ── Markdown renderer (simple) ────────────────────────────────────────────
-function renderMarkdown(text) {
-  return text
-    // Headings
+// ── Markdown renderer ────────────────────────────────────────────────────
+function md(text) {
+  // Proteger bloques de código
+  const codeBlocks = [];
+  text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) => {
+    codeBlocks.push(`<pre><code>${esc(code.trim())}</code></pre>`);
+    return `%%CODE${codeBlocks.length - 1}%%`;
+  });
+
+  text = text
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm,  '<h2>$1</h2>')
     .replace(/^# (.+)$/gm,   '<h1>$1</h1>')
-    // Bold / italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,         '<em>$1</em>')
-    // Code blocks
-    .replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
-      `<pre><code>${escapeHtml(code.trim())}</code></pre>`)
-    // Inline code
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Blockquote
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-    // Horizontal rule
-    .replace(/^---$/gm, '<hr>')
-    // Unordered lists
-    .replace(/^\s*[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/`([^`]+)`/g,         '<code>$1</code>')
+    .replace(/^> (.+)$/gm,         '<blockquote>$1</blockquote>')
+    .replace(/^---$/gm,            '<hr>')
+    // Tablas simples
+    .replace(/^\|(.+)\|$/gm, (row) => {
+      const cells = row.slice(1,-1).split('|').map(c => c.trim());
+      return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n?)+/gs, t => {
+      const rows = t.trim().split('\n').filter(r => !r.match(/^\|[-:| ]+\|$/));
+      if (!rows.length) return t;
+      const [head, ...body] = rows;
+      const headHtml = head.replace(/<td>/g,'<th>').replace(/<\/td>/g,'</th>');
+      return `<table><thead>${headHtml}</thead><tbody>${body.join('')}</tbody></table>`;
+    })
+    // Listas
+    .replace(/^[\s]*[-•*] (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, s => `<ul>${s}</ul>`)
-    // Ordered lists
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    // Paragraphs
+    .replace(/^\d+\. (.+)$/gm,  '<li>$1</li>')
     .replace(/\n{2,}/g, '</p><p>')
-    .replace(/^(?!<[hul]|<pre|<block|<hr)(.+)$/gm, (m) =>
-      m.startsWith('<') ? m : m)
-    // Line breaks
     .replace(/\n/g, '<br>');
+
+  // Restaurar bloques de código
+  codeBlocks.forEach((block, i) => { text = text.replace(`%%CODE${i}%%`, block); });
+  return text;
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Toast notifications ───────────────────────────────────────────────────
-function toast(msg, type = 'info', duration = 3500) {
-  const tc = document.getElementById('toast-container');
+// ── Toast ────────────────────────────────────────────────────────────────
+function toast(msg, type='info', ms=3200) {
+  const tc = document.getElementById('toasts');
   const t  = document.createElement('div');
-  const icons = { success: '✓', error: '✗', info: 'ℹ' };
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${icons[type] || '·'}</span> ${msg}`;
+  t.innerHTML = `<span>${{success:'✓',error:'✗',info:'·'}[type]||'·'}</span>${msg}`;
   tc.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)';
-    setTimeout(() => t.remove(), 300); }, duration);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, ms);
 }
 
-// ── Document management ───────────────────────────────────────────────────
-async function loadDocuments() {
+// ── Documentos ───────────────────────────────────────────────────────────
+async function loadDocs() {
   try {
-    const res  = await fetch(`${API}/api/documents`);
-    documents  = await res.json();
-    renderDocList();
-  } catch (e) {
-    toast('No se pudo conectar con el servidor. ¿Está arrancado?', 'error', 6000);
-  }
+    const r = await fetch(`${API}/api/documents`);
+    docs    = await r.json();
+    renderDocs();
+  } catch { toast('No se pudo conectar con el servidor','error',6000); }
 }
 
-function renderDocList() {
-  const items = docList.querySelectorAll('.doc-item');
-  items.forEach(el => el.remove());
-
-  noDocs.style.display = documents.length === 0 ? 'block' : 'none';
-
-  documents.forEach(doc => {
+function renderDocs() {
+  docList.querySelectorAll('.doc-item').forEach(e => e.remove());
+  noDocs.style.display = docs.length ? 'none' : 'block';
+  docs.forEach(doc => {
     const el = document.createElement('div');
-    el.className = `doc-item${selectedDocs.has(doc.id) ? ' selected' : ''}`;
+    el.className = `doc-item${selected.has(doc.id)?' selected':''}`;
     el.dataset.id = doc.id;
-
-    const kb      = Math.round(doc.chars / 1024);
-    const pages   = doc.pages || '?';
-    const chunks  = doc.chunks;
-    const shortName = doc.filename.replace('.pdf', '');
-
+    const kb = Math.round(doc.chars/1024);
     el.innerHTML = `
-      <div class="doc-checkbox">${selectedDocs.has(doc.id) ? '✓' : ''}</div>
+      <div class="doc-checkbox">${selected.has(doc.id)?'✓':''}</div>
       <div class="doc-info">
-        <span class="doc-name" title="${doc.filename}">${shortName}</span>
-        <span class="doc-meta">${pages}p · ${chunks} fragmentos · ${kb}KB</span>
+        <span class="doc-name" title="${doc.filename}">${doc.filename.replace('.pdf','')}</span>
+        <span class="doc-meta">${doc.pages||'?'}p · ${doc.chunks}frags · ${kb}KB</span>
       </div>
-      <button class="doc-delete" data-id="${doc.id}" title="Eliminar">✕</button>
-    `;
-
-    el.addEventListener('click', (e) => {
-      if (e.target.classList.contains('doc-delete')) return;
-      toggleDoc(doc.id);
-    });
-
-    el.querySelector('.doc-delete').addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteDoc(doc.id);
-    });
-
+      <button class="doc-delete" data-id="${doc.id}">✕</button>`;
+    el.addEventListener('click', e => { if(!e.target.classList.contains('doc-delete')) toggleDoc(doc.id); });
+    el.querySelector('.doc-delete').addEventListener('click', e => { e.stopPropagation(); deleteDoc(doc.id); });
     docList.appendChild(el);
   });
-
   updateCounter();
 }
 
-function toggleDoc(id) {
-  if (selectedDocs.has(id)) selectedDocs.delete(id);
-  else selectedDocs.add(id);
-  renderDocList();
-}
+function toggleDoc(id) { selected.has(id)?selected.delete(id):selected.add(id); renderDocs(); }
 
 function updateCounter() {
-  const n = selectedDocs.size;
-  docCounter.textContent = `${n} documento${n !== 1 ? 's' : ''} seleccionado${n !== 1 ? 's' : ''}`;
-  docCounter.className   = `doc-counter${n > 0 ? ' has-docs' : ''}`;
-
-  if (n > 0) {
-    const names = documents.filter(d => selectedDocs.has(d.id)).map(d =>
-      d.filename.replace('.pdf', '').slice(0, 30)).join(', ');
-    chatSub.textContent = `Consultando: ${names}`;
-  } else {
-    chatSub.textContent = 'Selecciona documentos y escribe tu pregunta';
-  }
+  const n = selected.size;
+  docCounter.textContent = `${n} doc${n!==1?'s':''} seleccionado${n!==1?'s':''}`;
+  docCounter.className   = `doc-counter${n>0?' active':''}`;
+  chatSub.textContent    = n>0
+    ? `Consultando: ${docs.filter(d=>selected.has(d.id)).map(d=>d.filename.replace('.pdf','').slice(0,25)).join(', ')}`
+    : 'Selecciona documentos y escribe tu pregunta';
 }
 
-selectAllBtn.addEventListener('click', () => {
-  if (selectedDocs.size === documents.length && documents.length > 0) {
-    selectedDocs.clear();
-  } else {
-    documents.forEach(d => selectedDocs.add(d.id));
-  }
-  renderDocList();
+document.getElementById('select-all-btn').addEventListener('click', () => {
+  docs.forEach(d=>selected.add(d.id)); renderDocs();
+});
+document.getElementById('deselect-btn').addEventListener('click', () => {
+  selected.clear(); renderDocs();
 });
 
 async function deleteDoc(id) {
-  await fetch(`${API}/api/documents/${id}`, { method: 'DELETE' });
-  selectedDocs.delete(id);
-  documents = documents.filter(d => d.id !== id);
-  renderDocList();
-  toast('Documento eliminado.', 'info');
+  await fetch(`${API}/api/documents/${id}`,{method:'DELETE'});
+  selected.delete(id);
+  docs = docs.filter(d=>d.id!==id);
+  renderDocs();
+  toast('Documento eliminado');
 }
 
-// ── File upload ───────────────────────────────────────────────────────────
-uploadZone.addEventListener('dragover', (e) => {
-  e.preventDefault(); uploadZone.classList.add('drag-over');
-});
+// ── Upload ───────────────────────────────────────────────────────────────
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', (e) => {
+uploadZone.addEventListener('drop', e => {
   e.preventDefault(); uploadZone.classList.remove('drag-over');
-  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
-  if (files.length) uploadFiles(files);
+  const files = Array.from(e.dataTransfer.files).filter(f=>f.name.endsWith('.pdf'));
+  if(files.length) uploadFiles(files);
 });
-
-fileInput.addEventListener('change', () => {
-  const files = Array.from(fileInput.files);
-  if (files.length) uploadFiles(files);
-  fileInput.value = '';
-});
+fileInput.addEventListener('change', () => { if(fileInput.files.length) uploadFiles(Array.from(fileInput.files)); fileInput.value=''; });
 
 async function uploadFiles(files) {
   uploadProg.classList.add('visible');
-  for (const file of files) {
-    uploadLabel.textContent = `Indexando: ${file.name}`;
+  for(const file of files) {
+    uploadLabel.textContent = `Indexando: ${file.name.slice(0,30)}...`;
     const form = new FormData();
     form.append('file', file);
     try {
-      const res  = await fetch(`${API}/api/documents`, { method: 'POST', body: form });
-      const doc  = await res.json();
-      if (!res.ok) throw new Error(doc.detail || 'Error');
-      if (!documents.find(d => d.id === doc.id)) documents.push(doc);
-      selectedDocs.add(doc.id);
-      toast(`✓ ${file.name.replace('.pdf', '')} indexado (${doc.chunks} fragmentos)`, 'success');
-    } catch (e) {
-      toast(`Error: ${e.message}`, 'error');
-    }
+      const r   = await fetch(`${API}/api/documents`,{method:'POST',body:form});
+      const doc = await r.json();
+      if(!r.ok) throw new Error(doc.detail||'Error');
+      if(!docs.find(d=>d.id===doc.id)) docs.push(doc);
+      selected.add(doc.id);
+      toast(`✓ ${file.name.replace('.pdf','')} indexado (${doc.chunks} fragmentos)`,'success');
+    } catch(e) { toast(`Error: ${e.message}`,'error'); }
   }
   uploadProg.classList.remove('visible');
-  renderDocList();
+  renderDocs();
 }
 
-// ── Mode selector ─────────────────────────────────────────────────────────
-document.querySelectorAll('.mode-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMode = btn.dataset.mode;
-  });
-});
+// ── Chat con streaming ───────────────────────────────────────────────────
+function hideWelcome() { if(welcome) welcome.style.display='none'; }
 
-// ── Chat ──────────────────────────────────────────────────────────────────
-const modeLabels = {
-  chat:      '💬 Chat',
-  summarize: '📋 Resumen',
-  notes:     '✍️ Apuntes',
-  quiz:      '🎯 Test',
-};
-
-function hideWelcome() {
-  if (welcome) welcome.style.display = 'none';
-}
-
-function appendMessage(role, content, mode) {
+function addMessage(role, html) {
   hideWelcome();
   const wrap = document.createElement('div');
   wrap.className = `message ${role}`;
-
-  const avatar = role === 'user'
-    ? '👤'
-    : '<img class="msg-avatar-img" src="/static/hermes.png" alt="Hermes">';
-
-  if (role === 'ai') {
-    wrap.innerHTML = `
-      <div class="msg-avatar">${avatar}</div>
-      <div class="msg-bubble">
-        <div class="msg-mode-badge">
-          <span>${modeLabels[mode] || '💬 Chat'}</span>
-        </div>
-        <div class="msg-content">${renderMarkdown(content)}</div>
-      </div>`;
-  } else {
-    wrap.innerHTML = `
-      <div class="msg-avatar">${avatar}</div>
-      <div class="msg-bubble">${escapeHtml(content).replace(/\n/g, '<br>')}</div>`;
-  }
-
+  const avatarHtml = role==='user'
+    ? '<div class="msg-avatar">👤</div>'
+    : '<div class="msg-avatar"><img src="hermes.png" alt="Hermes" class="msg-avatar-img"></div>';
+  wrap.innerHTML = `${avatarHtml}<div class="msg-bubble">${html}</div>`;
   messages.appendChild(wrap);
   messages.scrollTop = messages.scrollHeight;
-  return wrap;
-}
-
-function appendTyping() {
-  hideWelcome();
-  const wrap = document.createElement('div');
-  wrap.className = 'message ai';
-  wrap.id = 'typing-msg';
-  wrap.innerHTML = `
-    <div class="msg-avatar"><img class="msg-avatar-img" src="/static/hermes.png" alt="Hermes"></div>
-    <div class="msg-bubble">
-      <div class="typing-indicator">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>
-    </div>`;
-  messages.appendChild(wrap);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function removeTyping() {
-  const t = document.getElementById('typing-msg');
-  if (t) t.remove();
+  return wrap.querySelector('.msg-bubble');
 }
 
 async function sendMessage() {
   const msg = userInput.value.trim();
-  if (!msg || isLoading) return;
+  if(!msg || streaming) return;
 
-  isLoading = true;
+  streaming        = true;
   sendBtn.disabled = true;
   userInput.value  = '';
   autoResize();
 
-  appendMessage('user', msg, currentMode);
-  appendTyping();
+  // Burbuja del usuario
+  addMessage('user', esc(msg).replace(/\n/g,'<br>'));
+
+  // Burbuja vacía del AI con cursor
+  const bubble = addMessage('ai','');
+  bubble.classList.add('streaming-cursor');
+
+  let raw = '';  // texto plano acumulado
 
   try {
     const res = await fetch(`${API}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: msg,
-        doc_ids: Array.from(selectedDocs),
-        mode: currentMode,
-      }),
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ message: msg, doc_ids: Array.from(selected) }),
     });
 
-    const data = await res.json();
-    removeTyping();
+    if(!res.ok || !res.body) throw new Error(await res.text());
 
-    if (!res.ok) throw new Error(data.detail || 'Error del servidor');
-    appendMessage('ai', data.response, currentMode);
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
 
-  } catch (e) {
-    removeTyping();
-    appendMessage('ai', `⚠️ Error: ${e.message}\n\n¿El servidor está en marcha? Comprueba la terminal.`, currentMode);
+    while(true) {
+      const {done, value} = await reader.read();
+      if(done) break;
+      raw += decoder.decode(value, {stream:true});
+      bubble.innerHTML = md(raw);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+  } catch(e) {
+    bubble.innerHTML = `⚠️ <strong>Error:</strong> ${e.message}<br><small>¿El servidor está en marcha?</small>`;
   }
 
-  isLoading    = false;
+  bubble.classList.remove('streaming-cursor');
+  streaming        = false;
   sendBtn.disabled = false;
   userInput.focus();
 }
 
 sendBtn.addEventListener('click', sendMessage);
-
-userInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+userInput.addEventListener('keydown', e => {
+  if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-// Auto-resize textarea
 function autoResize() {
   userInput.style.height = '26px';
-  userInput.style.height = Math.min(userInput.scrollHeight, 160) + 'px';
+  userInput.style.height = Math.min(userInput.scrollHeight,150)+'px';
 }
 userInput.addEventListener('input', autoResize);
 
-// Hint chips
-document.querySelectorAll('.hint-chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    userInput.value = chip.dataset.hint || chip.textContent.trim().slice(2);
-    autoResize();
-    userInput.focus();
-  });
+document.querySelectorAll('.hint').forEach(h => {
+  h.addEventListener('click', () => { userInput.value = h.dataset.hint; autoResize(); userInput.focus(); });
 });
 
-// Clear chat
-clearBtn.addEventListener('click', () => {
-  const msgs = messages.querySelectorAll('.message');
-  msgs.forEach(m => m.remove());
-  if (welcome) welcome.style.display = 'flex';
+document.getElementById('clear-btn').addEventListener('click', () => {
+  messages.querySelectorAll('.message').forEach(m=>m.remove());
+  if(welcome) welcome.style.display='flex';
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────
-loadDocuments();
+// Init
+loadDocs();
 userInput.focus();
 </script>
 </body>

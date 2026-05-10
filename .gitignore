@@ -8,6 +8,7 @@ data/
 
 # Variables de entorno con credenciales
 .env
+backend.env
 
 # Python
 __pycache__/
