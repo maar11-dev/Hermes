@@ -27,6 +27,8 @@ CHUNK_SIZE      = int(os.getenv("CHUNK_SIZE", "600"))
 CHUNK_OVERLAP   = int(os.getenv("CHUNK_OVERLAP", "100"))
 TOP_K           = int(os.getenv("TOP_K", "5"))
 RERANK_MULTIPLIER = int(os.getenv("RERANK_MULTIPLIER", "3"))
+MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "5000"))
+CACHE_SIZE = int(os.getenv("CACHE_SIZE", "256"))
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -47,6 +49,8 @@ class RAGEngine:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.meta_path = DATA_DIR / "documents.json"
         self.reranker = None
+        self.query_embedding_cache: dict[str, list[float]] = {}
+        self.retrieve_cache: dict[str, str] = {}
 
         print(f"[RAG] Cargando embeddings: {EMBED_MODEL}")
         self.embedder = SentenceTransformer(EMBED_MODEL)
@@ -70,6 +74,25 @@ class RAGEngine:
         self.meta_path.write_text(
             json.dumps(self.docs, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+
+    def _clear_caches(self):
+        self.query_embedding_cache.clear()
+        self.retrieve_cache.clear()
+
+    def _normalize_cache_key(self, text: str) -> str:
+        return " ".join(text.strip().lower().split())
+
+    def _get_query_embedding(self, query: str) -> list[float]:
+        cache_key = self._normalize_cache_key(query)
+        cached_embedding = self.query_embedding_cache.get(cache_key)
+        if cached_embedding is not None:
+            return cached_embedding
+
+        embedding = self.embedder.encode([query]).tolist()[0]
+        if len(self.query_embedding_cache) >= CACHE_SIZE:
+            self.query_embedding_cache.pop(next(iter(self.query_embedding_cache)))
+        self.query_embedding_cache[cache_key] = embedding
+        return embedding
 
     def _get_reranker(self):
         if self.reranker is None:
@@ -134,6 +157,7 @@ class RAGEngine:
         }
         self.docs[doc_id] = entry
         self._save_meta()
+        self._clear_caches()
         return entry
 
     def list_documents(self) -> list[dict]:
@@ -145,13 +169,21 @@ class RAGEngine:
             self.col.delete(ids=results["ids"])
         self.docs.pop(doc_id, None)
         self._save_meta()
+        self._clear_caches()
 
     def _retrieve(self, query: str, doc_ids: list[str]) -> str:
         total = self.col.count()
         if total == 0:
             return ""
 
-        qe    = self.embedder.encode([query]).tolist()
+        normalized_query = self._normalize_cache_key(query)
+        doc_key = ",".join(sorted(doc_ids)) if doc_ids else "all"
+        cache_key = f"{normalized_query}|{doc_key}|{total}|{TOP_K}|{RERANK_MULTIPLIER}"
+        cached_context = self.retrieve_cache.get(cache_key)
+        if cached_context is not None:
+            return cached_context
+
+        qe    = [self._get_query_embedding(query)]
         where = None
         if doc_ids:
             where = {"doc_id": doc_ids[0]} if len(doc_ids) == 1 else {"doc_id": {"$in": doc_ids}}
@@ -185,9 +217,28 @@ class RAGEngine:
             print(f"[RAG] Aviso: no se pudo aplicar reranking ({e}). Se usa el orden original.")
             ranked_candidates = candidates
 
-        context_parts = [f"{candidate['source_info']}\n{candidate['text']}" for candidate in ranked_candidates[:TOP_K]]
+        context_parts = []
+        seen_texts = set()
+        used_chars = 0
+        for candidate in ranked_candidates:
+            normalized_text = " ".join(candidate["text"].split())
+            if normalized_text in seen_texts:
+                continue
+            context_piece = f"{candidate['source_info']}\n{candidate['text']}"
+            piece_length = len(context_piece)
+            if context_parts and used_chars + piece_length > MAX_CONTEXT_CHARS:
+                break
+            seen_texts.add(normalized_text)
+            context_parts.append(context_piece)
+            used_chars += piece_length
+            if len(context_parts) >= TOP_K:
+                break
 
-        return "\n\n---\n\n".join(context_parts)
+        context = "\n\n---\n\n".join(context_parts)
+        if len(self.retrieve_cache) >= CACHE_SIZE:
+            self.retrieve_cache.pop(next(iter(self.retrieve_cache)))
+        self.retrieve_cache[cache_key] = context
+        return context
 
     def _build_prompt(self, message: str, doc_ids: list[str]) -> tuple[str, str]:
         context = self._retrieve(message, doc_ids)
