@@ -10,7 +10,7 @@ import fitz  # PyMuPDF
 import chromadb
 import httpx
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from dotenv import load_dotenv
 from typing import AsyncGenerator
 
@@ -22,9 +22,11 @@ OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "llama3.2")
 ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620")
 EMBED_MODEL     = os.getenv("EMBED_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+CROSS_ENCODER_MODEL = os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 CHUNK_SIZE      = int(os.getenv("CHUNK_SIZE", "600"))
 CHUNK_OVERLAP   = int(os.getenv("CHUNK_OVERLAP", "100"))
 TOP_K           = int(os.getenv("TOP_K", "5"))
+RERANK_MULTIPLIER = int(os.getenv("RERANK_MULTIPLIER", "3"))
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -44,6 +46,7 @@ class RAGEngine:
     def __init__(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.meta_path = DATA_DIR / "documents.json"
+        self.reranker = None
 
         print(f"[RAG] Cargando embeddings: {EMBED_MODEL}")
         self.embedder = SentenceTransformer(EMBED_MODEL)
@@ -67,6 +70,12 @@ class RAGEngine:
         self.meta_path.write_text(
             json.dumps(self.docs, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+
+    def _get_reranker(self):
+        if self.reranker is None:
+            print(f"[RAG] Cargando reranker: {CROSS_ENCODER_MODEL}")
+            self.reranker = CrossEncoder(CROSS_ENCODER_MODEL)
+        return self.reranker
 
     def _extract_text_with_pages(self, content: bytes) -> list[dict]:
         pages_data = []
@@ -147,9 +156,10 @@ class RAGEngine:
         if doc_ids:
             where = {"doc_id": doc_ids[0]} if len(doc_ids) == 1 else {"doc_id": {"$in": doc_ids}}
 
-        results = self.col.query(query_embeddings=qe, n_results=min(TOP_K, total), where=where)
+        fetch_k = min(max(TOP_K * RERANK_MULTIPLIER, TOP_K), total)
+        results = self.col.query(query_embeddings=qe, n_results=fetch_k, where=where)
 
-        context_parts = []
+        candidates = []
         if results["documents"] and results["metadatas"]:
             for doc_text, meta in zip(results["documents"][0], results["metadatas"][0]):
                 # FIX 2: usar .get() para ser compatibles con chunks indexados
@@ -157,7 +167,25 @@ class RAGEngine:
                 filename = meta.get("filename", "Desconocido")
                 page     = meta.get("page", "?")
                 source_info = f"[Fuente: {filename}, Pág: {page}]"
-                context_parts.append(f"{source_info}\n{doc_text}")
+                candidates.append({
+                    "text": doc_text,
+                    "meta": meta,
+                    "source_info": source_info,
+                })
+
+        if not candidates:
+            return ""
+
+        try:
+            reranker = self._get_reranker()
+            pair_inputs = [(query, candidate["text"]) for candidate in candidates]
+            scores = reranker.predict(pair_inputs)
+            ranked_candidates = [candidate for _, candidate in sorted(zip(scores, candidates), key=lambda item: item[0], reverse=True)]
+        except Exception as e:
+            print(f"[RAG] Aviso: no se pudo aplicar reranking ({e}). Se usa el orden original.")
+            ranked_candidates = candidates
+
+        context_parts = [f"{candidate['source_info']}\n{candidate['text']}" for candidate in ranked_candidates[:TOP_K]]
 
         return "\n\n---\n\n".join(context_parts)
 
