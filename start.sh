@@ -39,6 +39,7 @@ pip install -q -r "$BACKEND_DIR/requirements.txt"
 
 # ── Directorio de datos ───────────────────────────────────────────────────
 mkdir -p "$DATA_DIR"
+rm -f "$DATA_DIR/.browser_opened"
 
 # ── Utilidad: leer variable desde .env de forma robusta ──────────────────
 read_env() {
@@ -79,6 +80,7 @@ fi
 # ── Arrancar FastAPI ──────────────────────────────────────────────────────
 echo ""
 echo "  ✓ Servidor iniciado → http://localhost:8000"
+echo "  El navegador se abrira cuando el servidor este listo"
 echo "  (Ctrl+C para detener)"
 echo ""
 

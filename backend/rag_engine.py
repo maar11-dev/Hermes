@@ -38,6 +38,8 @@ SYSTEM_PROMPT = (
     "Responde siempre en el mismo idioma que el usuario."
 )
 
+HistoryMessage = dict[str, str]
+
 class RAGEngine:
     def __init__(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -166,18 +168,38 @@ class RAGEngine:
         prompt = f"CONTENIDO DE LOS APUNTES:\n\n{context}\n\n{'─'*60}\n\nSOLICITUD:\n{message}"
         return SYSTEM_PROMPT, prompt
 
+    def _normalize_history(self, history: list[HistoryMessage] | None) -> list[HistoryMessage]:
+        if not history:
+            return []
+
+        normalized = []
+        for item in history[-6:]:
+            role = item.get("role", "")
+            content = item.get("content", "")
+            if role not in {"user", "assistant"}:
+                continue
+            if not isinstance(content, str) or not content.strip():
+                continue
+            normalized.append({"role": role, "content": content.strip()})
+        return normalized
+
     # ── Streaming ─────────────────────────────────────────────────────────────
 
-    async def stream(self, message: str, doc_ids: list[str]) -> AsyncGenerator[str, None]:
+    async def stream(self, message: str, doc_ids: list[str], history: list[HistoryMessage] | None = None) -> AsyncGenerator[str, None]:
         system, prompt = self._build_prompt(message, doc_ids)
+        normalized_history = self._normalize_history(history)
         if LLM_PROVIDER == "anthropic":
-            async for token in self._stream_anthropic(system, prompt):
+            async for token in self._stream_anthropic(system, prompt, normalized_history):
                 yield token
         else:
-            async for token in self._stream_ollama(system, prompt):
+            async for token in self._stream_ollama(system, prompt, normalized_history):
                 yield token
 
-    async def _stream_ollama(self, system: str, user: str) -> AsyncGenerator[str, None]:
+    async def _stream_ollama(self, system: str, user: str, history: list[HistoryMessage] | None = None) -> AsyncGenerator[str, None]:
+        messages = [{"role": "system", "content": system}]
+        messages.extend(history or [])
+        messages.append({"role": "user", "content": user})
+
         async with httpx.AsyncClient(timeout=180) as client:
             async with client.stream(
                 "POST",
@@ -185,10 +207,7 @@ class RAGEngine:
                 json={
                     "model":    OLLAMA_MODEL,
                     "stream":   True,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user",   "content": user},
-                    ],
+                    "messages": messages,
                     "options": {"num_ctx": 8192},
                 },
             ) as resp:
@@ -206,7 +225,10 @@ class RAGEngine:
                     except json.JSONDecodeError:
                         continue
 
-    async def _stream_anthropic(self, system: str, user: str) -> AsyncGenerator[str, None]:
+    async def _stream_anthropic(self, system: str, user: str, history: list[HistoryMessage] | None = None) -> AsyncGenerator[str, None]:
+        messages = list(history or [])
+        messages.append({"role": "user", "content": user})
+
         async with httpx.AsyncClient(timeout=180) as client:
             async with client.stream(
                 "POST",
@@ -221,7 +243,7 @@ class RAGEngine:
                     "max_tokens": 4096,
                     "stream":     True,
                     "system":     system,
-                    "messages":   [{"role": "user", "content": user}],
+                    "messages":   messages,
                 },
             ) as resp:
                 resp.raise_for_status()

@@ -57,6 +57,7 @@ echo   Instalando dependencias...
 "%VENV_PYTHON%" -m pip install -q -r "%BACKEND_DIR%\requirements.txt"
 
 mkdir "%SCRIPT_DIR%data" 2>nul
+del "%SCRIPT_DIR%data\.browser_opened" 2>nul
 
 :: Leer LLM_PROVIDER del .env
 SET LLM_PROVIDER=ollama
@@ -109,7 +110,7 @@ IF %ERRORLEVEL% NEQ 0 (
 :START_SERVER
 echo.
 echo   Servidor iniciado en http://localhost:8000
-echo   Abre esa URL en tu navegador
+echo   El navegador se abrira cuando el servidor este listo
 echo   Ctrl+C para detener
 echo.
 

@@ -101,6 +101,7 @@ const API = '';
 let docs        = [];
 let selected    = new Set();
 let streaming   = false;
+let conversationHistory = [];
 
 // DOM
 const docList     = document.getElementById('doc-list');
@@ -292,12 +293,17 @@ async function sendMessage() {
   bubble.classList.add('streaming-cursor');
 
   let raw = '';  // texto plano acumulado
+  let completed = false;
 
   try {
     const res = await fetch(`${API}/api/chat`, {
       method:  'POST',
       headers: {'Content-Type':'application/json'},
-      body:    JSON.stringify({ message: msg, doc_ids: Array.from(selected) }),
+      body:    JSON.stringify({
+        message: msg,
+        doc_ids: Array.from(selected),
+        history: conversationHistory.slice(-6),
+      }),
     });
 
     if(!res.ok || !res.body) throw new Error(await res.text());
@@ -313,11 +319,22 @@ async function sendMessage() {
       messages.scrollTop = messages.scrollHeight;
     }
 
+    completed = true;
+
   } catch(e) {
     bubble.innerHTML = `⚠️ <strong>Error:</strong> ${e.message}<br><small>¿El servidor está en marcha?</small>`;
   }
 
   bubble.classList.remove('streaming-cursor');
+
+  if(completed) {
+    conversationHistory.push(
+      { role: 'user', content: msg },
+      { role: 'assistant', content: raw || bubble.textContent || '' }
+    );
+    conversationHistory = conversationHistory.slice(-6);
+  }
+
   streaming        = false;
   sendBtn.disabled = false;
   userInput.focus();
@@ -341,6 +358,7 @@ document.querySelectorAll('.hint').forEach(h => {
 document.getElementById('clear-btn').addEventListener('click', () => {
   messages.querySelectorAll('.message').forEach(m=>m.remove());
   if(welcome) welcome.style.display='flex';
+  conversationHistory = [];
 });
 
 // Init

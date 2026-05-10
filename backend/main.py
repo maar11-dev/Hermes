@@ -8,6 +8,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
+import os
+import webbrowser
 import uvicorn
 
 from rag_engine import RAGEngine
@@ -24,11 +26,25 @@ app.add_middleware(
 rag = RAGEngine()
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+BROWSER_FLAG = Path(__file__).parent.parent / "data" / ".browser_opened"
 
 
 class ChatRequest(BaseModel):
     message: str
     doc_ids: list[str] = []
+    history: list[dict[str, str]] = []
+
+
+@app.on_event("startup")
+async def open_browser_on_startup():
+    if os.getenv("OPEN_BROWSER_ON_START", "1") != "1":
+        return
+    if BROWSER_FLAG.exists():
+        return
+
+    BROWSER_FLAG.parent.mkdir(parents=True, exist_ok=True)
+    BROWSER_FLAG.write_text("opened", encoding="utf-8")
+    webbrowser.open_new_tab("http://localhost:8000")
 
 
 @app.get("/api/health")
@@ -67,7 +83,7 @@ async def chat(req: ChatRequest):
 
     async def generate():
         try:
-            async for token in rag.stream(req.message, req.doc_ids):
+            async for token in rag.stream(req.message, req.doc_ids, req.history):
                 yield token
         except Exception as e:
             yield f"\n\n⚠️ Error: {e}"
