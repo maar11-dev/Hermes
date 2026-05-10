@@ -1,11 +1,12 @@
 """
-RAG Engine — con soporte de streaming para respuestas en tiempo real
+RAG Engine Optimizado — Hermes v2
+Mejoras: Control de contexto, citación de fuentes (página) y limpieza de texto.
 """
 
 import os
 import json
 import hashlib
-import fitz
+import fitz  # PyMuPDF
 import chromadb
 import httpx
 from pathlib import Path
@@ -19,10 +20,10 @@ LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "ollama")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "llama3.2")
 ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
-EMBED_MODEL     = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
-CHUNK_SIZE      = int(os.getenv("CHUNK_SIZE", "400"))
-CHUNK_OVERLAP   = int(os.getenv("CHUNK_OVERLAP", "60"))
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620")
+EMBED_MODEL     = os.getenv("EMBED_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+CHUNK_SIZE      = int(os.getenv("CHUNK_SIZE", "600"))
+CHUNK_OVERLAP   = int(os.getenv("CHUNK_OVERLAP", "100"))
 TOP_K           = int(os.getenv("TOP_K", "5"))
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -36,7 +37,6 @@ SYSTEM_PROMPT = (
     "Si la información no está en los apuntes proporcionados, indícalo con honestidad. "
     "Responde siempre en el mismo idioma que el usuario."
 )
-
 
 class RAGEngine:
     def __init__(self):
@@ -66,18 +66,28 @@ class RAGEngine:
             json.dumps(self.docs, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    def _extract_text(self, content: bytes) -> str:
+    def _extract_text_with_pages(self, content: bytes) -> list[dict]:
+        pages_data = []
         doc = fitz.open(stream=content, filetype="pdf")
-        return "\n\n".join(page.get_text("text") for page in doc)
+        for i, page in enumerate(doc):
+            text = page.get_text("text").strip()
+            if text:
+                pages_data.append({"page_num": i + 1, "text": text})
+        return pages_data
 
-    def _chunk_text(self, text: str) -> list[str]:
-        words = text.split()
-        step = max(1, CHUNK_SIZE - CHUNK_OVERLAP)
-        return [
-            " ".join(words[i: i + CHUNK_SIZE])
-            for i in range(0, len(words), step)
-            if len(" ".join(words[i: i + CHUNK_SIZE]).strip()) > 30
-        ]
+    def _chunk_text(self, pages_data: list[dict]) -> list[dict]:
+        chunks_with_meta = []
+        for page in pages_data:
+            words = page["text"].split()
+            step = max(1, CHUNK_SIZE - CHUNK_OVERLAP)
+            for i in range(0, len(words), step):
+                chunk_text = " ".join(words[i: i + CHUNK_SIZE])
+                if len(chunk_text.strip()) > 40:
+                    chunks_with_meta.append({
+                        "text": chunk_text,
+                        "page": page["page_num"]
+                    })
+        return chunks_with_meta
 
     # ── API pública ───────────────────────────────────────────────────────────
 
@@ -86,19 +96,31 @@ class RAGEngine:
         if doc_id in self.docs:
             return self.docs[doc_id]
 
-        text   = self._extract_text(content)
-        chunks = self._chunk_text(text)
-        if not chunks:
-            raise ValueError("No se pudo extraer texto del PDF.")
+        pages_data  = self._extract_text_with_pages(content)
+        chunks_data = self._chunk_text(pages_data)
 
-        embeddings = self.embedder.encode(chunks, show_progress_bar=False).tolist()
-        ids        = [f"{doc_id}_c{i}" for i in range(len(chunks))]
-        metadatas  = [{"doc_id": doc_id, "filename": filename, "chunk": i} for i in range(len(chunks))]
+        if not chunks_data:
+            raise ValueError("No se pudo extraer texto del PDF (podría ser una imagen que necesita OCR).")
 
-        self.col.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
+        texts      = [c["text"] for c in chunks_data]
+        embeddings = self.embedder.encode(texts, show_progress_bar=False).tolist()
+        ids        = [f"{doc_id}_c{i}" for i in range(len(chunks_data))]
+        metadatas  = [
+            {"doc_id": doc_id, "filename": filename, "page": c["page"]}
+            for c in chunks_data
+        ]
 
-        pages = len(fitz.open(stream=content, filetype="pdf"))
-        entry = {"id": doc_id, "filename": filename, "chunks": len(chunks), "chars": len(text), "pages": pages}
+        self.col.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+
+        # FIX 1: incluir 'chars' para que el frontend pueda calcular el tamaño en KB
+        total_chars = sum(len(c["text"]) for c in chunks_data)
+        entry = {
+            "id":       doc_id,
+            "filename": filename,
+            "chunks":   len(chunks_data),
+            "pages":    len(pages_data),
+            "chars":    total_chars,
+        }
         self.docs[doc_id] = entry
         self._save_meta()
         return entry
@@ -113,21 +135,35 @@ class RAGEngine:
         self.docs.pop(doc_id, None)
         self._save_meta()
 
-    def _retrieve(self, query: str, doc_ids: list[str]) -> list[str]:
+    def _retrieve(self, query: str, doc_ids: list[str]) -> str:
         total = self.col.count()
         if total == 0:
-            return []
+            return ""
+
         qe    = self.embedder.encode([query]).tolist()
         where = None
         if doc_ids:
             where = {"doc_id": doc_ids[0]} if len(doc_ids) == 1 else {"doc_id": {"$in": doc_ids}}
+
         results = self.col.query(query_embeddings=qe, n_results=min(TOP_K, total), where=where)
-        return results["documents"][0] if results["documents"] else []
+
+        context_parts = []
+        if results["documents"] and results["metadatas"]:
+            for doc_text, meta in zip(results["documents"][0], results["metadatas"][0]):
+                # FIX 2: usar .get() para ser compatibles con chunks indexados
+                # por versiones anteriores del engine (que usaban 'chunk' en vez de 'page')
+                filename = meta.get("filename", "Desconocido")
+                page     = meta.get("page", "?")
+                source_info = f"[Fuente: {filename}, Pág: {page}]"
+                context_parts.append(f"{source_info}\n{doc_text}")
+
+        return "\n\n---\n\n".join(context_parts)
 
     def _build_prompt(self, message: str, doc_ids: list[str]) -> tuple[str, str]:
-        chunks  = self._retrieve(message, doc_ids)
-        context = "\n\n---\n\n".join(chunks) if chunks else "(No hay documentos seleccionados)"
-        prompt  = f"CONTENIDO DE LOS APUNTES:\n\n{context}\n\n{'─'*60}\n\nSOLICITUD:\n{message}"
+        context = self._retrieve(message, doc_ids)
+        if not context:
+            context = "(No hay documentos seleccionados o la base de datos está vacía)"
+        prompt = f"CONTENIDO DE LOS APUNTES:\n\n{context}\n\n{'─'*60}\n\nSOLICITUD:\n{message}"
         return SYSTEM_PROMPT, prompt
 
     # ── Streaming ─────────────────────────────────────────────────────────────
@@ -153,6 +189,7 @@ class RAGEngine:
                         {"role": "system", "content": system},
                         {"role": "user",   "content": user},
                     ],
+                    "options": {"num_ctx": 8192},
                 },
             ) as resp:
                 resp.raise_for_status()
