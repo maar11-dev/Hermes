@@ -2,6 +2,12 @@
 
 > Chatea con tus apuntes en PDF usando inteligencia artificial local o cloud.
 
+> Versión actual: motor RAG híbrido con streaming, reranking y frontend renovado.
+
+<p align="center">
+  <img src="frontend/hermes.png" alt="Hermes" width="180">
+</p>
+
 ![Hermes](https://img.shields.io/badge/RAG-ChromaDB-orange)
 ![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688)
 ![Ollama](https://img.shields.io/badge/LLM-Ollama%20%7C%20Anthropic-blue)
@@ -13,11 +19,15 @@
 
 | Funcionalidad         | Descripción                                              |
 |-----------------------|----------------------------------------------------------|
-| 📄 **Subida de PDFs** | Arrastra y suelta tus apuntes; se indexan automáticamente |
-| 💬 **Chat**           | Pregunta sobre cualquier concepto de tus apuntes          |
+| 📄 **Subida de PDFs** | Arrastra y suelta archivos o selecciónalos desde la barra lateral; se indexan automáticamente |
+| 💬 **Chat en streaming** | Las respuestas aparecen poco a poco para una experiencia más fluida |
+| 🔎 **Búsqueda híbrida** | Combina BM25 + vectorial con Reciprocal Rank Fusion |
+| 🎯 **Reranking**      | Reordena los fragmentos recuperados con un cross-encoder |
+| 🧠 **Historial**      | Mantiene contexto de conversación en varias preguntas |
 | 📋 **Resumen**        | Genera resúmenes estructurados al instante                |
 | ✍️ **Apuntes**        | Convierte el contenido en apuntes tipo Cornell/Zettelkasten |
 | 🎯 **Test**           | Genera preguntas tipo test para repasar                   |
+| 🎛️ **Frontend renovado** | Barra lateral con documentos, contador, toasts y selector múltiple |
 | 🔒 **100% local**     | Los documentos nunca salen de tu máquina (con Ollama)     |
 | 💾 **Persistencia**   | La base vectorial se guarda en disco entre sesiones       |
 
@@ -95,6 +105,14 @@ TOP_K=4            # fragmentos recuperados
 | `qwen2.5`      | `ollama pull qwen2.5`     | ~2-3 GB| Muy bueno en español     |
 | `llama3.2`     | `ollama pull llama3.2`    | ~4 GB  | Mejor calidad, más CPU   |
 
+### Novedades recientes
+
+- Motor RAG con búsqueda híbrida BM25 + vectorial y fusión RRF.
+- Reordenación de resultados con `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+- Chat por streaming desde `/api/chat`.
+- Historial de conversación en la API para mantener contexto.
+- Frontend reorganizado con estilos propios, logo y mejor experiencia de uso.
+
 ---
 
 ## 📁 Estructura del proyecto
@@ -106,7 +124,9 @@ rag-notas/
 │   ├── rag_engine.py     # Lógica RAG (embed, retrieval, LLM)
 │   └── requirements.txt
 ├── frontend/
-│   └── index.html        # Interfaz web (todo en un fichero)
+│   ├── index.html        # Interfaz web
+│   ├── styles.css        # Estilos de la interfaz
+│   └── hermes.png        # Logo usado en el README y la UI
 ├── data/                 # Base de datos vectorial (autogenerado)
 │   ├── chroma_db/
 │   └── documents.json
@@ -129,14 +149,14 @@ El backend expone los siguientes endpoints:
 | `GET`    | `/api/documents`            | Listar documentos indexados     |
 | `POST`   | `/api/documents`            | Subir y indexar un PDF          |
 | `DELETE` | `/api/documents/{id}`       | Eliminar un documento           |
-| `POST`   | `/api/chat`                 | Consulta RAG                    |
+| `POST`   | `/api/chat`                 | Consulta RAG en streaming       |
 
 Ejemplo de consulta:
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "¿Qué es la fotosíntesis?", "doc_ids": [], "mode": "chat"}'
+  -d '{"message": "¿Qué es la fotosíntesis?", "doc_ids": [], "history": []}'
 ```
 
 ---
@@ -146,14 +166,16 @@ curl -X POST http://localhost:8000/api/chat \
 ```
 PDF → Extracción de texto (PyMuPDF)
     → Fragmentación en chunks con solapamiento
-    → Embeddings locales (sentence-transformers)
-    → Almacenamiento en ChromaDB (disco)
+  → Recuperación híbrida BM25 + embeddings
+  → Fusión de resultados + reranking
+  → Almacenamiento en ChromaDB (disco)
 
 Consulta → Embedding de la pregunta
-         → Búsqueda de similitud coseno en ChromaDB
-         → Recuperación de los TOP_K fragmentos más relevantes
+     → Búsqueda vectorial + BM25
+     → Reciprocal Rank Fusion + cross-encoder
+     → Recuperación de los TOP_K fragmentos más relevantes
          → Prompt con contexto → LLM (Ollama / Anthropic)
-         → Respuesta al usuario
+     → Respuesta al usuario en streaming
 ```
 
 ---
