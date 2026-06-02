@@ -43,8 +43,8 @@
 ### 1 — Clona el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/rag-notas.git
-cd rag-notas
+git clone https://github.com/tu-usuario/Hermes.git
+cd Hermes
 ```
 
 ### 2 — Arranca (Linux / macOS)
@@ -118,11 +118,17 @@ TOP_K=4            # fragmentos recuperados
 ## 📁 Estructura del proyecto
 
 ```
-rag-notas/
+Hermes/
 ├── backend/
 │   ├── main.py           # Servidor FastAPI + endpoints API
-│   ├── rag_engine.py     # Lógica RAG (embed, retrieval, LLM)
-│   └── requirements.txt
+│   ├── rag_engine.py     # Lógica RAG (orquestador + streaming a LLMs)
+│   ├── requirements.txt
+│   └── RAG/              # Componentes RAG (embedder, indexer, retriever, vector store)
+│       ├── __init__.py
+│       ├── embedder.py
+│       ├── indexer.py
+│       ├── retriever.py
+│       └── vector_store.py
 ├── frontend/
 │   ├── index.html        # Interfaz web
 │   ├── styles.css        # Estilos de la interfaz
